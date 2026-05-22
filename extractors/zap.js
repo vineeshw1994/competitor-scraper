@@ -65,7 +65,7 @@ async function resolveListingUrls(page, site) {
   const navSel = site.selectors?.listing?.paginationNav;
 
   try {
-    await page.goto(start, { waitUntil: 'networkidle2', timeout: 60000 });
+    await page.goto(start, { waitUntil: 'domcontentloaded', timeout: 90000 });
     const discovered = await page.evaluate((paginationNav) => {
       const found = new Set();
       const addUrl = (href) => {
@@ -104,8 +104,35 @@ async function scanListing(page, site) {
   console.log(`[${site.slug}] Scanning ${listingUrls.length} listing page(s)`);
 
   for (const listingUrl of listingUrls) {
-    await page.goto(listingUrl, { waitUntil: 'networkidle2', timeout: 60000 });
-    await sleep(parseInt(process.env.REQUEST_DELAY_MS || '1500', 10));
+    await page.goto(listingUrl, { waitUntil: 'domcontentloaded', timeout: 90000 });
+    await sleep(parseInt(process.env.REQUEST_DELAY_MS || '2500', 10));
+    try {
+      await page.waitForSelector('ul.products li.product, li.product.type-product', {
+        timeout: 15000,
+      });
+    } catch (_) {
+      /* continue — may still parse partial HTML */
+    }
+
+    let cardNodes = 0;
+    try {
+      cardNodes = await page.$$eval(sel.cards, (nodes) => nodes.length);
+    } catch (_) {
+      cardNodes = 0;
+    }
+    if (!cardNodes) {
+      const hint = await page.evaluate(() => ({
+        title: document.title || '',
+        products: document.querySelectorAll('ul.products li.product').length,
+        blocked: /just a moment|security verification|cloudflare|access denied/i.test(
+          document.body?.innerText || ''
+        ),
+      }));
+      console.warn(
+        `[${site.slug}] 0 cards on ${listingUrl} — page="${hint.title.slice(0, 60)}" ` +
+          `li.product=${hint.products} blocked=${hint.blocked}`
+      );
+    }
 
     const cards = await page.$$eval(sel.cards, (nodes, selectors) => {
       return nodes.map((card) => {
@@ -168,7 +195,7 @@ async function scrapeSingle(page, site, listingItem) {
   const sel = site.selectors.single;
   const url = listingItem.competition_url;
 
-  await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
   await sleep(parseInt(process.env.REQUEST_DELAY_MS || '1500', 10));
 
   const raw = await page.evaluate((selectors) => {

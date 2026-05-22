@@ -13,6 +13,7 @@ const SITES = [
     ],
     listingPaginate: true,
     extractor: 'zap',
+    competitionUrlPatterns: ['/competition/', '/competitions/'],
     selectors: {
       listing: {
         paginationNav: '.container.default-content-container nav ul, nav.woocommerce-pagination ul',
@@ -51,6 +52,7 @@ const SITES = [
     ],
     listingPaginate: true,
     extractor: 'zap',
+    competitionUrlPatterns: ['/competition/', '/competitions/'],
     selectors: {
       listing: {
         paginationNav: '.container.main-container nav ul, nav.woocommerce-pagination ul',
