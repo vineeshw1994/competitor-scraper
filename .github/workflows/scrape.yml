@@ -2,13 +2,8 @@ name: Competitor Scraper
 
 on:
   schedule:
-<<<<<<< HEAD
-    - cron: '30 23 * * *'  # 11:30 PM UTC (12:30 AM UK)
-  workflow_dispatch:        # Manual trigger
-=======
     - cron: '30 23 * * *'
   workflow_dispatch:
->>>>>>> 0d647d136ef875170ee2594ed3eb1c3588942dd0
 
 jobs:
   scrape:
@@ -24,9 +19,7 @@ jobs:
           node-version: '20'
       
       - name: Install dependencies
-        run: |
-          cd competitor-scraper
-          npm ci
+        run: npm ci   # No cd, files are at root
       
       - name: Install Chromium for Puppeteer
         run: |
@@ -34,9 +27,7 @@ jobs:
           sudo apt-get install -y chromium-browser
       
       - name: Run scraper
-        run: |
-          cd competitor-scraper
-          node scraper.js
+        run: node scraper.js   # No cd, files are at root
         env:
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_USER: ${{ secrets.DB_USER }}
