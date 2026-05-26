@@ -52,6 +52,20 @@ async function scrapeSite(browser, site, threshold, deepMax, dryRun = false) {
   if (!extractor) throw new Error(`No extractor: ${site.extractor}`);
 
   const page = await browser.newPage();
+
+  // Authenticate proxy if credentials are embedded in SCRAPER_PROXY URL.
+  if (process.env.SCRAPER_PROXY) {
+    try {
+      const proxyUrl = new URL(process.env.SCRAPER_PROXY);
+      if (proxyUrl.username && proxyUrl.password) {
+        await page.authenticate({
+          username: decodeURIComponent(proxyUrl.username),
+          password: decodeURIComponent(proxyUrl.password),
+        });
+      }
+    } catch (_) { /* invalid URL — skip auth */ }
+  }
+
   await page.evaluateOnNewDocument(() => {
     Object.defineProperty(navigator, 'webdriver', { get: () => false });
   });
@@ -143,12 +157,20 @@ async function main() {
   console.log('Letswin Competitor Scraper');
   console.log(`Threshold: ${threshold}% | Deep max per site: ${deepMax} | Dry run: ${opts.dryRun}`);
 
+  const proxyArgs = process.env.SCRAPER_PROXY
+    ? [`--proxy-server=${process.env.SCRAPER_PROXY}`]
+    : [];
+  if (process.env.SCRAPER_PROXY) {
+    console.log(`Proxy: ${process.env.SCRAPER_PROXY.replace(/:([^@]+)@/, ':***@')}`);
+  }
+
   const browser = await puppeteer.launch({
     headless: process.env.HEADLESS !== 'false',
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-blink-features=AutomationControlled',
+      ...proxyArgs,
     ],
   });
 

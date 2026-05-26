@@ -1,0 +1,36 @@
+{
+  "name": "letswin-competitor-scraper",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Nightly competitor intelligence scraper for letswin.co.uk",
+  "main": "scraper.js",
+  "scripts": {
+    "scrape": "node scraper.js",
+    "api": "node api-server.js",
+    "scrape:rys": "node scraper.js --site=rys",
+    "test:rys": "node scraper.js --site=rys --dry-run",
+    "scrape:royalux": "node scraper.js --site=royalux",
+    "test:royalux": "node scraper.js --site=royalux --dry-run",
+    "test:wwc": "node scraper.js --site=wwc --dry-run",
+    "test:d2r": "node scraper.js --site=d2r --dry-run",
+    "test:mrg": "node scraper.js --site=mrg --dry-run",
+    "probe:d2r-mrg": "node scripts/probe-d2r-mrg.js",
+    "probe:zap": "node scripts/probe-zap-listing.js",
+    "review:d2r": "node scripts/review-scrape.js d2r",
+    "review:mrg": "node scripts/review-scrape.js mrg",
+    "test:wwcd": "node scraper.js --site=wwcd --dry-run",
+    "test:four": "node scraper.js --new-four --dry-run",
+    "test:wwc:summary": "node scraper.js --site=wwc --dry-run --summary",
+    "test:d2r:summary": "node scraper.js --site=d2r --dry-run --summary",
+    "test:wwcd:summary": "node scraper.js --site=wwcd --dry-run --summary",
+    "test:four:summary": "node scraper.js --new-four --dry-run --summary",
+    "test:four:log": "node scraper.js --new-four --dry-run > output/four-dry-run.log 2>&1",
+    "scrape:four": "node scraper.js --new-four",
+    "probe": "node scripts/probe-listing.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "mysql2": "^3.14.0",
+    "puppeteer": "^24.2.1"
+  }
+}
