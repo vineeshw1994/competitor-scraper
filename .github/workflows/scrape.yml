@@ -2,8 +2,13 @@ name: Competitor Scraper
 
 on:
   schedule:
+<<<<<<< HEAD
     - cron: '30 23 * * *'  # 11:30 PM UTC (12:30 AM UK)
   workflow_dispatch:        # Manual trigger
+=======
+    - cron: '30 23 * * *'
+  workflow_dispatch:
+>>>>>>> 0d647d136ef875170ee2594ed3eb1c3588942dd0
 
 jobs:
   scrape:
