@@ -1,15 +1,19 @@
-name: Test Scraper (No DB)
+name: Scrape Ryse & Royalux (Test - No DB)
 
 on:
   workflow_dispatch:  # Manual trigger only
 
 jobs:
-  test:
+  scrape:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
       
@@ -21,13 +25,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y chromium-browser
       
-      - name: Run scraper (file output, no DB)
-        run: node scraper.js --dry-run --summary
+      - name: Scrape Ryse Competitions
+        run: node scraper.js --site=rys --dry-run --summary
         env:
           PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
       
-      - name: Upload results as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: scrape-results
-          path: scrape-results.json
+      - name: Scrape Royalux Competitions
+        run: node scraper.js --site=royalux --dry-run --summary
+        env:
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
