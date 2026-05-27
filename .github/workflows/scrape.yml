@@ -1,4 +1,4 @@
-name: Competitor Scrape (no DB — file output)
+name: Competitor Scrape → WordPress DB
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -35,18 +35,34 @@ jobs:
             libnss3 \
             libxss1
 
-      - name: Run scraper (all 6 sites, no proxy, no DB, write JSON)
-        run: node scraper.js --dry-run --summary --no-proxy --no-env
+      - name: Test MySQL connection
+        run: node scripts/test-db.js
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_TABLE_PREFIX: wp_
+
+      - name: Run scraper (all 6 sites → erbeaaustu)
+        run: node scraper.js --summary --no-proxy --no-env --out=output/scrape-results.json
         env:
           PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
           SCRAPER_THRESHOLD: 50
           DEEP_MAX_COMPS_PER_SITE: 3
           SCRAPER_PROXY: ''
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_TABLE_PREFIX: wp_
 
-      - name: Upload results as artifact
+      - name: Upload backup JSON artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: scrape-results-${{ github.run_number }}
           path: output/scrape-results.json
-          retention-days: 30
+          retention-days: 14

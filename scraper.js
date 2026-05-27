@@ -188,7 +188,13 @@ async function main() {
   const proxy = scraperProxyUrl();
   const proxyArgs = proxy ? [`--proxy-server=${proxy}`] : [];
   console.log(proxy ? `Proxy: ${proxy.replace(/:([^@]+)@/, ':***@')}` : 'Proxy: none (direct connection)');
-  if (opts.dryRun) console.log('Database: skipped (--dry-run)');
+  if (opts.dryRun) {
+    console.log('Database: skipped (--dry-run)');
+  } else {
+    console.log(
+      `Database: ${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '3306'}/${process.env.DB_NAME || '?'}`
+    );
+  }
 
   const browser = await puppeteer.launch({
     headless: process.env.HEADLESS !== 'false',
@@ -233,9 +239,10 @@ async function main() {
           } else {
             await db.upsertCompetition(row);
             saved++;
+            if (opts.outFile) allResults.push(row);
           }
         }
-        if (opts.dryRun) {
+        if (opts.dryRun || opts.summaryOnly) {
           const hot = results.filter((r) => r.confidence_tier === 'HIGH').length;
           const med = results.filter((r) => r.confidence_tier === 'MEDIUM').length;
           console.log(
@@ -267,6 +274,8 @@ async function main() {
         generated_at: new Date().toISOString(),
         total_found: totalFound,
         total_results: allResults.length,
+        saved_to_db: saved,
+        dry_run: opts.dryRun,
         errors: allErrors,
         competitions: allResults,
       };
