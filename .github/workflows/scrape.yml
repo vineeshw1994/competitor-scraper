@@ -35,12 +35,13 @@ jobs:
             libnss3 \
             libxss1
 
-      - name: Run scraper (all 6 sites, dry-run, write JSON)
-        run: node scraper.js --dry-run --summary
+      - name: Run scraper (all 6 sites, no proxy, no DB, write JSON)
+        run: node scraper.js --dry-run --summary --no-proxy --no-env
         env:
           PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
           SCRAPER_THRESHOLD: 50
           DEEP_MAX_COMPS_PER_SITE: 3
+          SCRAPER_PROXY: ''
 
       - name: Upload results as artifact
         uses: actions/upload-artifact@v4

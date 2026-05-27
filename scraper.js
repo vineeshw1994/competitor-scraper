@@ -7,8 +7,6 @@
  *   npm run test:rys            # dry run, console output only
  */
 
-require('dotenv').config();
-
 const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer');
@@ -18,7 +16,6 @@ const wwcExtractor = require('./extractors/wwc');
 const wwcdExtractor = require('./extractors/wwcd');
 const mrgExtractor = require('./extractors/mrg');
 const { enrichMetrics } = require('./lib/metrics');
-const db = require('./lib/db');
 
 const EXTRACTORS = {
   zap: zapExtractor,
@@ -32,10 +29,20 @@ const NEW_SITE_SLUGS = ['wwc', 'd2r', 'mrg', 'wwcd'];
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { site: null, sites: null, dryRun: false, summaryOnly: false, outFile: null };
+  const opts = {
+    site: null,
+    sites: null,
+    dryRun: false,
+    summaryOnly: false,
+    outFile: null,
+    noProxy: false,
+    noEnv: false,
+  };
   for (const arg of args) {
     if (arg === '--dry-run') opts.dryRun = true;
     if (arg === '--summary') opts.summaryOnly = true;
+    if (arg === '--no-proxy') opts.noProxy = true;
+    if (arg === '--no-env') opts.noEnv = true;
     if (arg.startsWith('--site=')) opts.site = arg.split('=')[1];
     if (arg.startsWith('--sites=')) {
       opts.sites = arg
@@ -50,16 +57,31 @@ function parseArgs() {
   return opts;
 }
 
-async function scrapeSite(browser, site, threshold, deepMax, dryRun = false) {
+function loadEnv(opts) {
+  const onGithub = process.env.GITHUB_ACTIONS === 'true';
+  if (!opts.noEnv && !onGithub) {
+    require('dotenv').config();
+  }
+  if (opts.noProxy || onGithub) {
+    delete process.env.SCRAPER_PROXY;
+  }
+}
+
+function scraperProxyUrl() {
+  const url = (process.env.SCRAPER_PROXY || '').trim();
+  return url || null;
+}
+
+async function scrapeSite(browser, site, threshold, deepMax, dryRun = false, db = null) {
   const extractor = EXTRACTORS[site.extractor];
   if (!extractor) throw new Error(`No extractor: ${site.extractor}`);
 
   const page = await browser.newPage();
 
-  // Authenticate proxy if credentials are embedded in SCRAPER_PROXY URL.
-  if (process.env.SCRAPER_PROXY) {
+  const proxyUrlStr = scraperProxyUrl();
+  if (proxyUrlStr) {
     try {
-      const proxyUrl = new URL(process.env.SCRAPER_PROXY);
+      const proxyUrl = new URL(proxyUrlStr);
       if (proxyUrl.username && proxyUrl.password) {
         await page.authenticate({
           username: decodeURIComponent(proxyUrl.username),
@@ -146,6 +168,9 @@ async function scrapeSite(browser, site, threshold, deepMax, dryRun = false) {
 
 async function main() {
   const opts = parseArgs();
+  loadEnv(opts);
+  const db = opts.dryRun ? null : require('./lib/db');
+
   const threshold = parseInt(process.env.SCRAPER_THRESHOLD || '50', 10);
   const deepMax = parseInt(process.env.DEEP_MAX_COMPS_PER_SITE || '3', 10);
   let sites;
@@ -160,12 +185,10 @@ async function main() {
   console.log('Letswin Competitor Scraper');
   console.log(`Threshold: ${threshold}% | Deep max per site: ${deepMax} | Dry run: ${opts.dryRun}`);
 
-  const proxyArgs = process.env.SCRAPER_PROXY
-    ? [`--proxy-server=${process.env.SCRAPER_PROXY}`]
-    : [];
-  if (process.env.SCRAPER_PROXY) {
-    console.log(`Proxy: ${process.env.SCRAPER_PROXY.replace(/:([^@]+)@/, ':***@')}`);
-  }
+  const proxy = scraperProxyUrl();
+  const proxyArgs = proxy ? [`--proxy-server=${proxy}`] : [];
+  console.log(proxy ? `Proxy: ${proxy.replace(/:([^@]+)@/, ':***@')}` : 'Proxy: none (direct connection)');
+  if (opts.dryRun) console.log('Database: skipped (--dry-run)');
 
   const browser = await puppeteer.launch({
     headless: process.env.HEADLESS !== 'false',
@@ -195,7 +218,8 @@ async function main() {
           site,
           threshold,
           deepMax,
-          opts.dryRun
+          opts.dryRun,
+          db
         );
         totalFound += found;
         allErrors[site.slug] = errors;
