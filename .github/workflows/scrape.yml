@@ -25,12 +25,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y chromium-browser
       
-      - name: Scrape Ryse Competitions
-        run: node scraper.js --site=rys --dry-run --summary
-        env:
-          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
-      
-      - name: Scrape Royalux Competitions
-        run: node scraper.js --site=royalux --dry-run --summary
-        env:
-          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+      - name: Scrape Winner Winner (working)
+       run: node scraper.js --site=wwc --dry-run --summary
+
+      - name: Scrape Winner Winner Chicken Dinner (working)
+       run: node scraper.js --site=wwcd --dry-run --summary
