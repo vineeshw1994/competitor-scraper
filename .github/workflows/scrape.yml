@@ -1,29 +1,56 @@
-name: Test Ryse & Royalux (No Proxy)
+name: Competitor Scrape (no DB — file output)
 
 on:
+  # Run manually from GitHub Actions tab
   workflow_dispatch:
+  # Run nightly at 23:30 UTC (midnight UK time)
+  schedule:
+    - cron: '30 23 * * *'
 
 jobs:
-  test:
+  scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    
+    timeout-minutes: 30
+
     steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
-      - name: Install Puppeteer
-        run: npm install puppeteer
-      
-      - name: Install Chromium
+          cache: 'npm'
+          cache-dependency-path: competitor-scraper/package-lock.json
+
+      - name: Install dependencies
+        working-directory: competitor-scraper
+        run: npm ci
+
+      - name: Install Chromium system deps
         run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser
-      
-      - name: Run test (no proxy, no DB)
-        run: node test-rys-royal-no-proxy.js
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            chromium-browser \
+            fonts-liberation \
+            libatk-bridge2.0-0 \
+            libgtk-3-0 \
+            libnss3 \
+            libxss1
+
+      - name: Run scraper (all 6 sites, dry-run, write JSON)
+        working-directory: competitor-scraper
+        run: node scraper.js --dry-run --summary
         env:
           PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+          SCRAPER_THRESHOLD: 50
+          DEEP_MAX_COMPS_PER_SITE: 3
+          # No DB vars needed — dry-run mode skips MySQL entirely
+
+      - name: Upload results as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scrape-results-${{ github.run_number }}
+          path: competitor-scraper/output/scrape-results.json
+          retention-days: 30

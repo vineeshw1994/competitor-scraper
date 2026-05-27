@@ -9,6 +9,8 @@
 
 require('dotenv').config();
 
+const fs = require('fs');
+const path = require('path');
 const puppeteer = require('puppeteer');
 const { getSite, getAllSites } = require('./sites');
 const zapExtractor = require('./extractors/zap');
@@ -30,7 +32,7 @@ const NEW_SITE_SLUGS = ['wwc', 'd2r', 'mrg', 'wwcd'];
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { site: null, sites: null, dryRun: false, summaryOnly: false };
+  const opts = { site: null, sites: null, dryRun: false, summaryOnly: false, outFile: null };
   for (const arg of args) {
     if (arg === '--dry-run') opts.dryRun = true;
     if (arg === '--summary') opts.summaryOnly = true;
@@ -43,6 +45,7 @@ function parseArgs() {
         .filter(Boolean);
     }
     if (arg === '--new-four') opts.sites = NEW_SITE_SLUGS.slice();
+    if (arg.startsWith('--out=')) opts.outFile = arg.split('=')[1];
   }
   return opts;
 }
@@ -178,6 +181,7 @@ async function main() {
   const allErrors = {};
   let totalFound = 0;
   let saved = 0;
+  const allResults = [];
 
   try {
     if (!opts.dryRun) {
@@ -198,6 +202,7 @@ async function main() {
 
         for (const row of results) {
           if (opts.dryRun) {
+            allResults.push(row);
             if (!opts.summaryOnly) {
               console.log(JSON.stringify(row, null, 2));
             }
@@ -206,7 +211,7 @@ async function main() {
             saved++;
           }
         }
-        if (opts.dryRun && opts.summaryOnly) {
+        if (opts.dryRun) {
           const hot = results.filter((r) => r.confidence_tier === 'HIGH').length;
           const med = results.filter((r) => r.confidence_tier === 'MEDIUM').length;
           console.log(
@@ -229,10 +234,26 @@ async function main() {
       await db.finishRun(runId, { totalFound, perSiteErrors: allErrors, status });
     }
 
+    // Write JSON output file when in dry-run mode (or when --out= is given)
+    const outFile = opts.outFile || (opts.dryRun ? 'output/scrape-results.json' : null);
+    if (outFile && allResults.length > 0) {
+      const outDir = path.dirname(outFile);
+      if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+      const outData = {
+        generated_at: new Date().toISOString(),
+        total_found: totalFound,
+        total_results: allResults.length,
+        errors: allErrors,
+        competitions: allResults,
+      };
+      fs.writeFileSync(outFile, JSON.stringify(outData, null, 2), 'utf8');
+      console.log(`\nResults written to: ${outFile}`);
+    }
+
     console.log(`\nDone. Found ${totalFound} competitions, saved ${saved} rows.`);
   } finally {
     await browser.close();
-    await db.closePool();
+    if (!opts.dryRun) await db.closePool();
   }
 }
 
