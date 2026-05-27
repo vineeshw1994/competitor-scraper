@@ -4,11 +4,21 @@
  * Usage: DB_HOST=... DB_USER=... node scripts/test-db.js
  */
 const mysql = require('mysql2/promise');
+const path = require('path');
+
+// Local convenience: load competitor-scraper/.env when not on GitHub Actions.
+if (process.env.GITHUB_ACTIONS !== 'true') {
+  try {
+    require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
+  } catch (_) {
+    // ignore missing dotenv/.env for CI
+  }
+}
 
 async function main() {
   const host = (process.env.DB_HOST || '').trim();
   const user = (process.env.DB_USER || '').trim();
-  const pass = process.env.DB_PASSWORD;
+  const pass = process.env.DB_PASSWORD; 
   const name = (process.env.DB_NAME || '').trim();
   const port = parseInt(process.env.DB_PORT || '3306', 10);
   const prefix = process.env.DB_TABLE_PREFIX || 'wp_';
@@ -61,6 +71,14 @@ main().catch((err) => {
     console.error('  • Value = Cloudways public IP only, e.g. 52.56.159.106');
     console.error('  • NOT localhost, NOT 127.0.0.1, NOT the DB name (erbeaaustu)');
     console.error('  • No http://, no spaces, no quotes in the secret value');
+  }
+  if (err.code === 'ETIMEDOUT' || /ETIMEDOUT/i.test(err.message)) {
+    console.error('');
+    console.error('ETIMEDOUT = credentials are probably fine, but GitHub cannot reach MySQL on port 3306.');
+    console.error('  • Cloudways blocks remote MySQL unless your runner IP is whitelisted');
+    console.error('  • GitHub Actions uses a NEW random IP every run — static CIDR lists often fail');
+    console.error('  • Ask Cloudways: enable Remote MySQL on the staging app and allow GitHub egress');
+    console.error('  • Or use workflow: scrape to JSON only, then import on server (no remote DB)');
   }
   if (err.code === 'ECONNREFUSED') {
     console.error('ECONNREFUSED = IP reachable but MySQL port 3306 blocked. Ask Cloudways to whitelist GitHub IPs.');
