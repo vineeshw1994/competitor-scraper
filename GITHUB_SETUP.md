@@ -4,15 +4,27 @@
 
 GitHub repo → **Settings → Secrets and variables → Actions → New repository secret**
 
-| Secret name   | Value (Cloudways → staging app → Access Details) |
-|---------------|--------------------------------------------------|
-| `DB_HOST`     | Public IP of the WordPress app (e.g. `52.56.159.106`) |
+Secret **names** must match exactly (case-sensitive):
+
+| Secret name   | What to put in the value field |
+|---------------|--------------------------------|
+| `DB_HOST`     | **Public IP only** from Cloudways → WordPress staging app → Access Details. Example: `52.56.159.106` |
 | `DB_PORT`     | `3306` |
-| `DB_USER`     | Database username for `erbeaaustu` |
-| `DB_PASSWORD` | Database password |
+| `DB_USER`     | MySQL username for **erbeaaustu** (from same Access Details page) |
+| `DB_PASSWORD` | MySQL password for **erbeaaustu** |
 | `DB_NAME`     | `erbeaaustu` |
 
-Table prefix is fixed as `wp_` in the workflow.
+### Common mistakes (cause `ENOTFOUND`)
+
+| Wrong DB_HOST value | Why it fails |
+|---------------------|--------------|
+| `localhost` or `127.0.0.1` | Points to GitHub runner, not Cloudways |
+| `erbeaaustu` | That is the **database name**, not the host — use `DB_NAME` for that |
+| `https://52.56.159.106` | Remove `https://` — IP only |
+| `52.56.159.106:3306` | Port goes in `DB_PORT`, not in `DB_HOST` |
+| Empty / typo in secret name `DB_host` | GitHub won't inject it — must be `DB_HOST` |
+
+Use the **WordPress staging app** credentials (`erbeaaustu`), not the old scraper app (`wftxhgbmuh`).
 
 ## 2. Run the workflow
 
