@@ -44,7 +44,7 @@ function readBody(req) {
     let data = '';
     req.on('data', (chunk) => {
       data += chunk;
-      if (data.length > 1e6) reject(new Error('Body too large'));
+      if (data.length > 25 * 1024 * 1024) reject(new Error('Body too large'));
     });
     req.on('end', () => {
       if (!data) return resolve({});
@@ -102,6 +102,22 @@ async function handle(req, res) {
       if (!ok) return send(res, 400, { ok: false, error: 'Could not remove site' });
       const sites = await api.listSites();
       return send(res, 200, { ok: true, sites });
+    }
+
+    if (req.method === 'POST' && path === '/import-json') {
+      const body = await readBody(req);
+      const result = await db.importCompetitionsPayload(body);
+      return send(res, 200, {
+        ok: true,
+        imported: {
+          run_id: result.runId,
+          total: result.total,
+          saved: result.saved,
+          sites_touched: result.sitesTouched,
+          status: result.status,
+          errors: result.perSiteErrors,
+        },
+      });
     }
 
     send(res, 404, { ok: false, error: 'Not found' });

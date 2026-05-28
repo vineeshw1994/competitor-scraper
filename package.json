@@ -15,6 +15,7 @@
     "test:d2r": "node scraper.js --site=d2r --dry-run",
     "test:mrg": "node scraper.js --site=mrg --dry-run",
     "probe:d2r-mrg": "node scripts/probe-d2r-mrg.js",
+    "import:json": "node scripts/import-json-to-api.js output/scrape-results.json",
     "probe:zap": "node scripts/probe-zap-listing.js",
     "review:d2r": "node scripts/review-scrape.js d2r",
     "review:mrg": "node scripts/review-scrape.js mrg",
