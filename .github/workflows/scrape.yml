@@ -46,6 +46,31 @@ jobs:
           DEEP_MAX_COMPS_PER_SITE: 3
           SCRAPER_PROXY: ''
 
+      - name: Import JSON into API (writes Woo DB)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Posting output/scrape-results.json to import API..."
+          HTTP_CODE=$(curl -sS -o import-response.json -w "%{http_code}" \
+            -X POST "${{ secrets.IMPORT_API_URL }}" \
+            -H "Content-Type: application/json" \
+            -H "x-lwd-competitor-secret: ${{ secrets.COMPETITOR_API_SECRET }}" \
+            --data-binary @output/scrape-results.json)
+
+          echo "Import API HTTP: $HTTP_CODE"
+          cat import-response.json
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "Import API HTTP error"
+            exit 1
+          fi
+
+          OK=$(node -e "const fs=require('fs'); const j=JSON.parse(fs.readFileSync('import-response.json','utf8')); process.stdout.write(String(j.ok===true));")
+          if [ "$OK" != "true" ]; then
+            echo "Import API returned ok=false"
+            exit 1
+          fi
+
       - name: Upload backup JSON artifact
         uses: actions/upload-artifact@v4
         if: always()
