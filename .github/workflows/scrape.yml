@@ -61,7 +61,7 @@ jobs:
           cat import-response.json
 
           if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
-            echo "Import API HTTP error"
+            echo "Import API HTTP error" 
             exit 1
           fi
 
