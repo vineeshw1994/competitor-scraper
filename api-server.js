@@ -159,7 +159,11 @@ async function handle(req, res) {
       }
       const result = await aiBriefing.generateForRun(
         Number.isFinite(runId) ? runId : null,
-        { apiKey: String(apiKey), totalFound: body.total_found }
+        {
+          apiKey: String(apiKey),
+          totalFound: body.total_found,
+          model: body.claude_model || body.model || undefined,
+        }
       );
       return send(res, 200, { ok: result.ok !== false, briefing: result });
     }
