@@ -14,6 +14,7 @@ require('dotenv').config();
 const http = require('http');
 const api = require('./lib/api-read');
 const db = require('./lib/db');
+const aiBriefing = require('./lib/ai-briefing');
 
 const PORT = parseInt(process.env.COMPETITOR_API_PORT || '3847', 10);
 const SECRET = process.env.COMPETITOR_API_SECRET || '';
@@ -107,6 +108,25 @@ async function handle(req, res) {
     if (req.method === 'POST' && path === '/import-json') {
       const body = await readBody(req);
       const result = await db.importCompetitionsPayload(body);
+      let briefing = { skipped: true, reason: 'use POST /generate-ai-briefing after import' };
+      const wantAi =
+        req.headers['x-generate-ai-briefing'] === '1' ||
+        body.generate_ai_briefing === true;
+      const apiKey =
+        req.headers['x-anthropic-api-key'] ||
+        process.env.ANTHROPIC_API_KEY ||
+        '';
+      if (
+        wantAi &&
+        apiKey &&
+        result.saved > 0 &&
+        result.status !== 'failed'
+      ) {
+        briefing = await aiBriefing.generateForRun(result.runId, {
+          apiKey: String(apiKey),
+          totalFound: result.total,
+        });
+      }
       return send(res, 200, {
         ok: true,
         imported: {
@@ -117,7 +137,31 @@ async function handle(req, res) {
           status: result.status,
           errors: result.perSiteErrors,
         },
+        ai_briefing: briefing,
       });
+    }
+
+    if (req.method === 'GET' && path === '/ai-briefing/latest') {
+      const row = await aiBriefing.getLatestBriefing();
+      return send(res, 200, { ok: true, briefing: row });
+    }
+
+    if (req.method === 'POST' && path === '/generate-ai-briefing') {
+      const body = await readBody(req);
+      const runId = body.run_id != null ? parseInt(body.run_id, 10) : null;
+      const apiKey =
+        req.headers['x-anthropic-api-key'] ||
+        body.anthropic_api_key ||
+        process.env.ANTHROPIC_API_KEY ||
+        '';
+      if (!apiKey) {
+        return send(res, 400, { ok: false, error: 'ANTHROPIC_API_KEY required' });
+      }
+      const result = await aiBriefing.generateForRun(
+        Number.isFinite(runId) ? runId : null,
+        { apiKey: String(apiKey), totalFound: body.total_found }
+      );
+      return send(res, 200, { ok: result.ok !== false, briefing: result });
     }
 
     send(res, 404, { ok: false, error: 'Not found' });

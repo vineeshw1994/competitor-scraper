@@ -71,6 +71,35 @@ jobs:
             exit 1
           fi
 
+      - name: Generate AI briefing (Claude)
+        if: success()
+        shell: bash
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          COMPETITOR_API_SECRET: ${{ secrets.COMPETITOR_API_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+            echo "ANTHROPIC_API_KEY secret not set — skipping AI briefing"
+            exit 0
+          fi
+          IMPORT_URL="${{ secrets.IMPORT_API_URL }}"
+          BASE="${IMPORT_URL%/import-json}"
+          RUN_ID=$(node -e "const j=JSON.parse(require('fs').readFileSync('import-response.json','utf8')); const r=j.imported&&j.imported.run_id; if(!r) process.exit(1); process.stdout.write(String(r));")
+          echo "AI briefing for scraper run #$RUN_ID"
+          HTTP_CODE=$(curl -sS -o ai-briefing-response.json -w "%{http_code}" \
+            -X POST "${BASE}/generate-ai-briefing" \
+            -H "Content-Type: application/json" \
+            -H "x-lwd-competitor-secret: ${COMPETITOR_API_SECRET}" \
+            -H "x-anthropic-api-key: ${ANTHROPIC_API_KEY}" \
+            -d "{\"run_id\":${RUN_ID}}")
+          echo "AI briefing HTTP: $HTTP_CODE"
+          cat ai-briefing-response.json
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "AI briefing failed (non-fatal for scrape)"
+            exit 0
+          fi
+
       - name: Upload backup JSON artifact
         uses: actions/upload-artifact@v4
         if: always()
