@@ -3,10 +3,9 @@ name: Competitor Scrape (JSON only)
 on:
   workflow_dispatch:
   schedule:
-    # 06:00 UK (BST, UTC+1)
+    # One run/day at 06:00 UK (BST, UTC+1). GitHub cron is UTC only.
+    # In GMT (Oct–Mar) change to: '0 6 * * *' for 06:00 UK.
     - cron: '0 5 * * *'
-    # 06:00 UK (GMT, UTC+0)
-    - cron: '0 6 * * *'
 
 jobs:
   scrape:
